@@ -2,7 +2,10 @@
 
 package cmd
 
-import "strings"
+import (
+	"os"
+	"strings"
+)
 
 // escapeChars replaces all double quotes and backslashes in the given string with escaped double quotes.
 // If the SHELL variable isn't set, we assume that the user is running infisical from CMD or PowerShell.
