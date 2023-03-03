@@ -9,9 +9,9 @@ import (
 func TestFilterReservedEnvVars(t *testing.T) {
 
 	// some test env vars.
-	// HOME and PATH are reserved key words and should be filtered out
+	// HOME and PATH are reserved keywords and should be filtered out
 	// XDG_SESSION_ID and LC_CTYPE are reserved key word prefixes and should be filtered out
-	// The filter function only checks the keys of the env map, so we dont need to set any values
+	// The filter function only checks the keys of the env map, so we don't need to set any values
 	env := map[string]models.SingleEnvironmentVariable{
 		"test":           {},
 		"test2":          {},
@@ -21,7 +21,7 @@ func TestFilterReservedEnvVars(t *testing.T) {
 		"LC_CTYPE":       {},
 	}
 
-	// check to see if there are any reserved key words in secrets to inject
+	// check to see if there are any reserved keywords in secrets to inject
 	filterReservedEnvVars(env)
 
 	if len(env) != 2 {
@@ -46,4 +46,82 @@ func TestFilterReservedEnvVars(t *testing.T) {
 		t.Errorf("Expected LC_CTYPE to be filtered out")
 	}
 
+}
+
+func TestEscapeChars(t *testing.T) {
+	type testCase struct {
+		input    string
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			input:    `test`,
+			expected: `test`,
+		},
+		{
+			input:    `test"`,
+			expected: `test\"`,
+		},
+		{
+			input:    `test"test`,
+			expected: `test\"test`,
+		},
+		{
+			input:    `test"test""`,
+			expected: `test\"test\"\"`,
+		},
+		{
+			input:    `test"test"-'test'`,
+			expected: `test\"test\"-'test'`,
+		},
+	}
+
+	for _, tc := range testCases {
+		actual := escapeChars(tc.input)
+		if actual != tc.expected {
+			t.Errorf("Expected %s, got %s", tc.expected, actual)
+		}
+	}
+}
+
+func TestBuildExecCmd(t *testing.T) {
+	type testCase struct {
+		input    []string
+		expected string
+	}
+
+	testCases := []testCase{
+		{
+			input:    []string{"test"},
+			expected: `test`,
+		},
+		{
+			input:    []string{"ls", "-l"},
+			expected: `ls -l`,
+		},
+		{
+			input:    []string{"echo", `"this is a test"`},
+			expected: `echo \"this is a test\"`,
+		},
+		{
+			input:    []string{"echo", `"this is a test with \"quotes\""`},
+			expected: `echo \"this is a test with \\\"quotes\\\"\"`,
+		},
+		{
+			input:    []string{"echo", `\"`, "something", `\"`},
+			expected: `echo \\\" something \\\"`,
+		},
+		{
+			input:    []string{"echo", `\'`, "something", `\'`},
+			expected: `echo \\' something \\'`,
+		},
+	}
+
+	for _, tc := range testCases {
+		actual := buildExecCmd(tc.input)
+		if actual != tc.expected {
+			t.Errorf("Expected %s, got %s", tc.expected, actual)
+		}
+	}
 }

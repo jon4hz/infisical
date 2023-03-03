@@ -109,7 +109,7 @@ var runCmd = &cobra.Command{
 			environmentVariables[key] = value
 		}
 
-		// check to see if there are any reserved key words in secrets to inject
+		// check to see if there are any reserved keywords in secrets to inject
 		filterReservedEnvVars(secretsByKey)
 
 		// now add infisical secrets
@@ -189,8 +189,11 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string)
 	shell := subShellCmd()
 	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
 
-	args = append(args[:1], args[0:]...) // shift args to the right
-	args[0] = shell[1]
+	subCmd := buildExecCmd(args)
+	args = []string{
+		shell[1],
+		subCmd,
+	}
 
 	cmd := exec.Command(shell[0], args...)
 
@@ -225,7 +228,7 @@ func subShellCmd() [2]string {
 	if currentShell != "" {
 		shell[0] = currentShell
 	} else if runtime.GOOS == "windows" {
-		// if the SHELL env var is not set and we're on Windows, use cmd.exe
+		// if the SHELL env var is not set, and we're on Windows, use cmd.exe
 		// The SHELL var should always be checked first, in case the user executes
 		// infisical from something like Git Bash.
 		return [...]string{"cmd", "/C"}
@@ -234,7 +237,25 @@ func subShellCmd() [2]string {
 	return shell
 }
 
-// Credit: inspired by AWS Valut
+// buildExecCmd combines the given parts into a single command string.
+// If the parts contain quotes or backslashes, they will be escaped.
+func buildExecCmd(parts []string) string {
+	if len(parts) == 0 {
+		return ""
+	}
+
+	var s strings.Builder
+	for i, part := range parts {
+		if i > 0 {
+			s.WriteString(" ")
+		}
+		s.WriteString(escapeChars(part))
+	}
+
+	return s.String()
+}
+
+// Credit: inspired by AWS Vault
 func execCmd(cmd *exec.Cmd) error {
 	sigChannel := make(chan os.Signal, 1)
 	signal.Notify(sigChannel)
