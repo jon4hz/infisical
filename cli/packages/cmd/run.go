@@ -189,13 +189,22 @@ func executeSingleCommandWithEnvs(args []string, secretsCount int, env []string)
 	shell := subShellCmd()
 	color.Green("Injecting %v Infisical secrets into your application process", secretsCount)
 
-	subCmd := buildExecCmd(args)
-	args = []string{
-		shell[1],
-		subCmd,
-	}
+	var cmd *exec.Cmd
 
-	cmd := exec.Command(shell[0], args...)
+	// make sure the shell exists
+	_, err := exec.LookPath(shell[0])
+	if err != nil {
+		// if we can't find the shell, just execute the command directly
+		cmd = exec.Command(args[0], args[1:]...)
+		log.Debugf("Could not find shell %s, executing command directly: %s \n", shell[0], cmd.String())
+	} else {
+		subCmd := buildExecCmd(args)
+		args = []string{
+			shell[1],
+			subCmd,
+		}
+		cmd = exec.Command(shell[0], args...)
+	}
 
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
